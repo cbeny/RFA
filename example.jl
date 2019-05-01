@@ -8,8 +8,10 @@ using Random
 
 # Computes the covariances of features. 
 # F and G are of shape (number of features, number of data points)
-# The features are 32 bits for speed, but the covariances may need more precision
-cov(F, G) = (Float64.(F*F'), Float64.(G*G'), Float64.(F*G')) ./ size(F,2)
+function cov(F, G) 
+	n = size(F,2)
+	F/n*F', G/n*G', F/n*G'
+end
 
 # Relevance of features given their covariances
 relevance((K,L,A)) = tr((K\A)*(L\A'))
@@ -18,7 +20,7 @@ relevance((K,L,A)) = tr((K\A)*(L\A'))
 # to the infered (expected) value of X
 inferX((K,L,A), F, X) = (X*F')*(K\A)*inv(L)/size(F,2)
 
-# conversely, infers Y from features g of X
+# conversely, infers Y from features of X
 inferY((K,L,A), G, Y) = (Y*G')*(L\A')*inv(K)/size(G,2)
 
 # computes the singular values of the inference maps
@@ -41,7 +43,7 @@ end
 function train(max_epoch; cnn=false)
 
 	batch_size = 200 
-	opt = ADAM()    # ADAM is unreasonably effective here
+	opt = ADAM()  
 
 	# let's prepare the data
 	float32(x) = Float32.(x)
@@ -66,12 +68,12 @@ function train(max_epoch; cnn=false)
 
 		featX = Chain(x->reshape(x, width, height, 1, :),
 				  	Conv((3,3), 1=>32, relu),
-				  	Conv((4,4), 32=>32, stride=(2,2), relu),
-				  	Conv((3,3), 32=>64, relu),
-				  	Conv((4,4), 64=>64, stride=(2,2), relu),
+				  	Conv((4,4), 32=>64, stride=(2,2), relu),
+				  	Conv((3,3), 64=>64, relu),
+				  	Conv((4,4), 64=>128, stride=(2,2), relu),
 				  	x->reshape(x, :, size(x,4)),
-				  	Dense(1024, 800, relu), 
-				  	Dense(800, num_feat)) 
+				  	Dense(2048, 1024, relu), 
+				  	Dense(1024, num_feat)) 
 	else
 		println("Using a 2-layer perceptron.")
 
@@ -132,17 +134,15 @@ function train(max_epoch; cnn=false)
 
 		# infer labels and compare with truth
 		test_err = sum(Flux.onecold(I*tF) .!= Flux.onecold(tY))
-		train_err = sum(Flux.onecold(I*F) .!= Flux.onecold(Y))
 
-		@printf("test/train errors = %.2f%%/%.2f%%\n",  
-			100*test_err/size(tX,2),
-			100*train_err/size(X,2))
+		@printf("test errors = %.2f%%\n",  
+			100*test_err/size(tX,2))
 	end 
 
 	# let's return the prediction model, and final relevances
 	return x -> Flux.onecold(I*data(featX(x)), 0:9), singvals(test_kernel)
 end
 
-model, λ = train(150, cnn=false)
+model, λ = train(30, cnn=true)
 println("Singular values: ", λ)
 
