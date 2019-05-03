@@ -4,6 +4,6 @@ This is an example of implementation of the approach presented in https://arxiv.
 
 This program trains and tests a neural network for the classification of MNIST digits using a novel loss function, coupled with an extra post-processing operation.
 
-The algorithm converges very fast, and has a strong regularizating effect.
+The algorithm converges very fast, and has a strong regularizing effect.
 
-This code can also be straighforwardly extended to learn to do inference between two correlated datasets.
+This code can be straighforwardly extended to learn to do inference between two correlated datasets.
