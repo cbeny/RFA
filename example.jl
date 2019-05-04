@@ -5,6 +5,7 @@ using Base.Iterators
 using LinearAlgebra 
 using Printf 
 using Random 
+#using CuArrays
 
 # Computes the covariances of features. 
 # F and G are of shape (number of features, number of data points)
@@ -33,7 +34,7 @@ end
 
 # Peforms the same as net(dataset), but avoids choking out of memory 
 # when using convolutional nets
-const test_batch_size = 10_000  # a smaller value will use less memory
+const test_batch_size = 200  # a smaller value will use less memory
 function apply_by_batch(net, dataset)
 	hcat((net(dataset[:,I]) for I in partition(1:size(dataset,2), test_batch_size))...)
 end
@@ -51,12 +52,12 @@ function train(max_epoch; cnn=false)
 	width, height = size(images[1]) # = 28, 28
 
 	# training dataset
-	X = reshape(hcat(float32.(images)...), width*height, :)
-	Y = Flux.onehotbatch(MNIST.labels(), 0:9) 
+	X = reshape(hcat(float32.(images)...), width*height, :) |> gpu
+	Y = Flux.onehotbatch(MNIST.labels(), 0:9)  |> gpu
 
 	# test dataset
-	tX = reshape(hcat(float32.(MNIST.images(:test))...), width*height, :)
-	tY = Flux.onehotbatch(MNIST.labels(:test), 0:9) 
+	tX = reshape(hcat(float32.(MNIST.images(:test))...), width*height, :) |> gpu
+	tY = Flux.onehotbatch(MNIST.labels(:test), 0:9)  |> gpu
 
 	# for MNIST: num_feat=10, num_data=60,000 
 	num_feat, num_data = size(Y)
@@ -73,19 +74,19 @@ function train(max_epoch; cnn=false)
 				  	Conv((4,4), 64=>128, stride=(2,2), relu),
 				  	x->reshape(x, :, size(x,4)),
 				  	Dense(2048, 1024, relu), 
-				  	Dense(1024, num_feat)) 
+				  	Dense(1024, num_feat))  |> gpu
 	else
 		println("Using a 2-layer perceptron.")
 
 		featX = Chain(Dense(width*height, 1024, relu), 
 				  	Dense(1024, 1024, relu),
-				  	Dense(1024, num_feat))  
+				  	Dense(1024, num_feat))   |> gpu
 	end
 
 	# The label's one hot encoding already serve as optimal features
 	# We just need them to be "tracked" to avoid a Flux bug
 	# (ambiguity in overloading of matrix multiplication)
-	featY(x) = TrackedArray(Float32.(x))
+	featY(x) = TrackedArray(Float32.(x))  |> gpu
 
 	# parameters to be optimized, in general one would include featY as well
 	ps = params(featX)	
@@ -117,8 +118,8 @@ function train(max_epoch; cnn=false)
 		print("testing...\r")
 
 		# let's compute the features of the test data 
-		tF = apply_by_batch(data∘featX, tX)
-		tG = apply_by_batch(data∘featY, tY)
+		tF = apply_by_batch(data∘featX, tX)  |> gpu
+		tG = apply_by_batch(data∘featY, tY)  |> gpu
 		test_kernel = cov(tF, tG)
 
 		# compute the test loss
