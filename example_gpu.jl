@@ -35,12 +35,6 @@ inferX((K,L,A), F, X) = (X*F')*(K\A)*inv(L)/size(F,2)
 # conversely, infers Y from features of X
 inferY((K,L,A), G, Y) = (Y*G')*(L\A')*inv(K)/size(G,2)
 
-# computes the singular values of the inference maps
-function singvals((K,L,A)) 
-	isK = inv(sqrt(K))
-	M = real.(isK*A*(L\A')*isK)
-	return eigvals(Symmetric(M))
-end
 
 # Peforms the same as net(dataset), but avoids choking out of memory 
 # when using convolutional nets
@@ -151,8 +145,8 @@ function train(max_epoch; cnn=false)
 			100*test_err/size(tX,2))
 	end 
 
-	# let's return the prediction model, and final relevances
-	return x -> Flux.onecold(I*data(featX(x)), 0:9), singvals(test_kernel)
+	# let's return the prediction model
+	return x -> Flux.onecold(I*data(featX(x)), 0:9)
 end
 
-model, λ = train(6, cnn=true)
+model = train(10, cnn=true)
