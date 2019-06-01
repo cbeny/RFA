@@ -12,7 +12,7 @@ using JLD2: @save, @load
 using Serialization
 
 using CuArrays    # comment this out if no gpu available
-root_dir = "output/"
+root_dir = ""
 #root_dir = "/var/tmp/"
 
 # precision for the covariance matrices (not the neural net)
