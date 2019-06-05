@@ -143,6 +143,6 @@ function train(max_epoch; cnn=false)
 	return x -> Flux.onecold(I*data(featX(x)), 0:9), singvals(test_kernel)
 end
 
-model, λ = train(30, cnn=true)
+model, λ = train(10, cnn=false)
 println("Singular values: ", λ)
 
