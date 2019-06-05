@@ -1,7 +1,7 @@
 
-# Install TensorFlow version 2
-import os
-os.system('pip3 install -q tensorflow==2.0.0-alpha0')
+# Tested on TensorFlow version 2
+#import os
+#os.system('pip3 install -q tensorflow==2.0.0-alpha0')
 
 import numpy as np
 import tensorflow as tf
