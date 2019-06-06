@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 # Tested on TensorFlow 1.13.1 and 2.0.0-alpha0
 
 bs = 200  # batch size
-num_epochs = 15
+num_epochs = 100
 
 # for comparisons
 use_RFA = True
@@ -30,7 +30,7 @@ y_test = tf.one_hot(y_test, 10)
 # This network produces the features on images (variable X)
 # The one-hot encoding of the labels (variable Y) already are the optimal target features
 if use_cnn:
-	print("Using a convolutional neural net")
+	print("\nUsing a convolutional neural net")
 
 	model = Sequential([
 		Conv2D(32, kernel_size=(3, 3), strides=(1,1), input_shape=(28, 28, 1), activation='relu'),
@@ -38,16 +38,16 @@ if use_cnn:
 		Conv2D(64, kernel_size=(3, 3), strides=(1,1), activation='relu'),
 		Conv2D(128, kernel_size=(4, 4), strides=(2,2), activation='relu'),
 		Flatten(),
-		Dense(1024, activation='relu'),
+		Dense(2048, activation='relu'),
 	  	Dense(num_feat) 
 	])
 else:
-	print("Using a 3-layer perceptron")
+	print("\nUsing a 3-layer perceptron")
 
 	model = Sequential([
 	  Flatten(input_shape=(28, 28, 1)),
 	  Dense(1024, activation='relu'),
-	  Dense(1024, activation='relu'), 
+	  Dense(1024, activation='relu'),
 	  Dense(num_feat) 
 	])
 
