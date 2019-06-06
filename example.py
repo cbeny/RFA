@@ -24,7 +24,8 @@ x_test = x_test.reshape(10000,28,28,1)/255.0
 y_train = tf.one_hot(y_train, 10)
 y_test = tf.one_hot(y_test, 10)
 
-# This network produces the features on images
+# We need one network producing features for the first data type 
+# (the images in this example)
 in1 = Input(shape=(28,28,1))
 if use_cnn:
 	print("\nUsing a convolutional neural net")
@@ -41,8 +42,9 @@ else:
 	aux = Dense(1024, activation='relu')(aux)
 out1 = Dense(num_feat)(aux)
 
-# out2 should be given by another trainable neural net acting on in2
-# but in this example, one-hot encoding already represents the optimal features
+# and another network producing features for the second data type
+# In this example these are the labels, but the one-hot encoding already 
+# represents the optimal features, so we just pass them through
 in2 = Input(shape=(10,))
 out2 = in2
 
@@ -82,7 +84,6 @@ def RFA_Loss(dummy, features):
 	F, G = tf.split(features, 2, axis=1)
 	return num_feat - relevance(cov(F, G)) 
 
-	print("and the RFA loss function")
 
 model.compile(optimizer='adam', loss=RFA_Loss)
 
