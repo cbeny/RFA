@@ -7,7 +7,7 @@ num_epochs = 100
 
 # for comparisons
 use_RFA = True
-use_cnn = True
+use_cnn = False
 
 # Number of features = number of categories for supervised learning
 num_feat = 10
@@ -57,27 +57,19 @@ D = tf.constant(1e-8 * np.identity(num_feat), tf.float32)
 def get_batch_size(X):
 	return tf.cast(tf.shape(X)[0], tf.float32)
 
-# computes the covariances between batches of features F of X and G of Y
-def cov(F, G):
-	n = get_batch_size(G) 
+# produces a matrix which maps the output of the neural net to the actual prediction
+def RFA_Pred(F, Y):
+	n = get_batch_size(F) 
 	K = transpose(F)/n @ F
-	L = transpose(G)/n @ G
-	A = transpose(F)/n @ G
-	return K, L, A
+	A = transpose(F)/n @ Y
+	return transpose(A) @ inv(K + D)
 
-# relevance of features given their covariances
-def relevance(ker):
-	K, L, A = ker
-	return trace(inv(K + D) @ A @ inv(L + D) @ transpose(A))
-
-# produces a matrix which maps a vector of features on X to the inferred (expected) value of Y
-def inferY(ker, G, Y):
-	n = get_batch_size(G)  
-	K, L, A = ker
-	return transpose(Y)/n @ G @ inv(L + D) @ transpose(A) @ inv(K + D)
-
-def RFA_Loss(F, G):
-	return num_feat - relevance(cov(F, G))
+def RFA_Loss(F, Y):
+	n = get_batch_size(F) 
+	K = transpose(F)/n @ F
+	A = transpose(F)/n @ Y
+	L = transpose(Y)/n @ Y
+	return num_feat - trace(inv(K + D) @ A @ inv(L + D) @ transpose(A))
 
 # cross-entropy loss for comparison
 def CE_Loss(x,y):
@@ -91,20 +83,12 @@ if use_RFA:
 	for epoch in range(num_epochs):
 		model.fit(x_train, y_train, epochs=1, batch_size=bs) 
 
-		# computes the features on the training images
+		# postprocessing needed to obtain the full prediction model
 		F = model.predict(x_train, batch_size=bs)
+		P = RFA_Pred(F, y_train)
 
-		# the features for the labels are just given by the one-hot encoding of those labels
-		G = y_train   
-
-		# convariances of F ang G
-		ker = cov(F, G)
-
-		# matrix mapping the output of the model to a prediction
-		I = inferY(ker, G, y_train)
-
-		# label predictions on test data
-		y_pred = model.predict(x_test, batch_size=bs) @ transpose(I)
+		# predict the labels of the test data
+		y_pred = model.predict(x_test, batch_size=bs) @ transpose(P)
 
 		inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_test)).numpy()
 		print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
