@@ -27,8 +27,7 @@ y_train = tf.one_hot(y_train, 10)
 y_test = tf.one_hot(y_test, 10)
 
 
-# This network produces the features on images (variable X)
-# The one-hot encoding of the labels (variable Y) already are the optimal target features
+# We need a neural net as usual, with 1 linear output neuron per class
 if use_cnn:
 	print("\nUsing a convolutional neural net")
 
