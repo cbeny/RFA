@@ -5,18 +5,16 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 bs = 200  # batch size
 num_epochs = 100
 
-# for comparisons
-use_RFA = True
 use_cnn = True
 
-# Number of features = number of categories for supervised learning
+# Number of features = number of categories (for supervised learning)
 num_feat = 10
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.linalg import transpose, inv, trace
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, Dense, Flatten, Dropout
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Conv2D, Dense, Flatten, Input, concatenate
 
 # prepare the data
 mnist = tf.keras.datasets.mnist
@@ -26,30 +24,34 @@ x_test = x_test.reshape(10000,28,28,1)/255.0
 y_train = tf.one_hot(y_train, 10)
 y_test = tf.one_hot(y_test, 10)
 
-
-# This network produces the features on images (variable X)
-# The one-hot encoding of the labels (variable Y) already are the optimal target features
+# This network produces the features on images
+in1 = Input(shape=(28,28,1))
 if use_cnn:
 	print("\nUsing a convolutional neural net")
-
-	model = Sequential([
-		Conv2D(32, kernel_size=(3, 3), strides=(1,1), input_shape=(28, 28, 1), activation='relu'),
-		Conv2D(64, kernel_size=(4, 4), strides=(2,2), activation='relu'),
-		Conv2D(64, kernel_size=(3, 3), strides=(1,1), activation='relu'),
-		Conv2D(128, kernel_size=(4, 4), strides=(2,2), activation='relu'),
-		Flatten(),
-		Dense(2048, activation='relu'),
-	  	Dense(num_feat) 
-	])
+	aux = Conv2D(32, kernel_size=(3, 3), strides=(1,1), activation='relu')(in1)
+	aux = Conv2D(64, kernel_size=(4, 4), strides=(2,2), activation='relu')(aux)
+	aux = Conv2D(64, kernel_size=(3, 3), strides=(1,1), activation='relu')(aux)
+	aux = Conv2D(128, kernel_size=(4, 4), strides=(2,2), activation='relu')(aux)
+	aux = Flatten()(aux)
+	aux = Dense(2048, activation='relu')(aux)
 else:
 	print("\nUsing a 3-layer perceptron")
+	aux = Flatten()(in1)
+	aux = Dense(1024, activation='relu')(aux)
+	aux = Dense(1024, activation='relu')(aux)
+out1 = Dense(num_feat)(aux)
 
-	model = Sequential([
-	  Flatten(input_shape=(28, 28, 1)),
-	  Dense(1024, activation='relu'),
-	  Dense(1024, activation='relu'),
-	  Dense(num_feat) 
-	])
+# out2 should be given by another trainable neural net acting on in2
+# but in this example, one-hot encoding already represents the optimal features
+in2 = Input(shape=(10,))
+out2 = in2
+
+# We will use each models separately for predictions...
+feat1 = Model(inputs=in1, outputs=out1)
+feat2 = Model(inputs=in2, outputs=out2)
+
+# ...but together for training as they have a joint loss function
+model = Model(inputs=[in1, in2], outputs=concatenate([out1, out2]))
 
 
 D = tf.constant(1e-8 * np.identity(num_feat), tf.float32)
@@ -76,49 +78,32 @@ def inferY(ker, G, Y):
 	K, L, A = ker
 	return transpose(Y)/n @ G @ inv(L + D) @ transpose(A) @ inv(K + D)
 
-def RFA_Loss(F, G):
-	return num_feat - relevance(cov(F, G))
+def RFA_Loss(dummy, features):
+	F, G = tf.split(features, 2, axis=1)
+	return num_feat - relevance(cov(F, G)) 
 
-# cross-entropy loss for comparison
-def CE_Loss(x,y):
-    return tf.keras.backend.categorical_crossentropy(x, y, from_logits=True)
-
-if use_RFA:
 	print("and the RFA loss function")
 
-	model.compile(optimizer='adam', loss = RFA_Loss)
+model.compile(optimizer='adam', loss=RFA_Loss)
 
-	for epoch in range(num_epochs):
-		model.fit(x_train, y_train, epochs=1, batch_size=bs) 
+# keras really wants us to have a target, but we don't.....
+dummy = [0.0 for i in range(60000)] 
 
-		# computes the features on the training images
-		F = model.predict(x_train, batch_size=bs)
+for epoch in range(num_epochs):
+	model.fit([x_train, y_train], dummy, epochs=1, batch_size=bs) 
 
-		# the features for the labels are just given by the one-hot encoding of those labels
-		G = y_train   
+	# computes the features on the training images
+	F = feat1.predict(x_train, batch_size=bs)
+	G = feat2.predict(y_train, batch_size=bs)
 
-		# convariances of F ang G
-		ker = cov(F, G)
+	# produces a matrix I mapping the output of the model to a prediction 
+	# (average over the posterior)
+	ker = cov(F, G)
+	I = inferY(ker, G, y_train)
 
-		# matrix mapping the output of the model to a prediction
-		I = inferY(ker, G, y_train)
+	# label predictions on test data
+	y_pred  = feat1.predict(x_test, batch_size=bs) @ transpose(I)
+	y_true  = feat2.predict(y_test, batch_size=bs)
 
-		# label predictions on test data
-		y_pred = model.predict(x_test, batch_size=bs) @ transpose(I)
-
-		inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_test)).numpy()
-		print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
-
-else:
-	print("and the cross-entropy loss function")
-
-	model.compile(optimizer='adam', loss = CE_Loss)
-
-	for epoch in range(num_epochs):
-		model.fit(x_train, y_train, epochs=1, batch_size=bs)
-
-		y_pred = model.predict(x_test, batch_size=bs) 
-
-		inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_test)).numpy()
-		print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
-
+	inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_true)).numpy()
+	print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
