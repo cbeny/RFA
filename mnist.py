@@ -7,7 +7,7 @@ num_epochs = 100
 
 # for comparisons
 use_RFA = True
-use_cnn = False
+use_cnn = True
 
 # Number of features = number of categories for supervised learning
 num_feat = 10
@@ -57,7 +57,6 @@ D = tf.constant(1e-8 * np.identity(num_feat), tf.float32)
 def get_batch_size(X):
 	return tf.cast(tf.shape(X)[0], tf.float32)
 
-# produces a matrix which maps the output of the neural net to the actual prediction
 def RFA_Pred(F, Y):
 	n = get_batch_size(F) 
 	K = transpose(F)/n @ F
@@ -69,7 +68,7 @@ def RFA_Loss(F, Y):
 	K = transpose(F)/n @ F
 	A = transpose(F)/n @ Y
 	L = transpose(Y)/n @ Y
-	return num_feat - trace(inv(K + D) @ A @ inv(L + D) @ transpose(A))
+	return num_feat - trace(A @ inv(L) @ transpose(A) @ inv(K + D))
 
 # cross-entropy loss for comparison
 def CE_Loss(x,y):
@@ -84,8 +83,8 @@ if use_RFA:
 		model.fit(x_train, y_train, epochs=1, batch_size=bs) 
 
 		# postprocessing needed to obtain the full prediction model
-		F = model.predict(x_train, batch_size=bs)
-		P = RFA_Pred(F, y_train)
+		features = model.predict(x_train, batch_size=bs)
+		P = RFA_Pred(features, y_train)
 
 		# predict the labels of the test data
 		y_pred = model.predict(x_test, batch_size=bs) @ transpose(P)
