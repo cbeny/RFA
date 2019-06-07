@@ -36,8 +36,8 @@ if use_cnn:
 else:
 	print("\nUsing a 3-layer perceptron")
 	x = Flatten()(in1)
-	x = Dense(1000, activation='relu')(x)
-	x = Dense(1000, activation='relu')(x)
+	x = Dense(1024, activation='relu')(x)
+	x = Dense(1024, activation='relu')(x)
 out1 = Dense(num_feat)(x)
 
 # and another network producing features for the second data type
@@ -95,7 +95,7 @@ model.compile(optimizer='adam', loss=RFA_Loss)
 dummy = np.zeros(60000)
 
 for epoch in range(num_epochs):
-	model.fit([x_train, y_train], dummy, epochs=1, batch_size=bs) 
+	model.fit([x_train, y_train], dummy, epochs=1, batch_size=bs, shuffle=True) 
 
 	print("testing...", end='\r')
 
@@ -105,11 +105,11 @@ for epoch in range(num_epochs):
 
 	# produces a matrix mapping the output of the model to a prediction 
 	# (average over the posterior)
-	I = inferY(cov(F, G), G, y_train)
+	P = inferY(cov(F, G), G, y_train)
 
 	# label predictions on test data
 	tF = feat1.predict(x_test, batch_size=bs)
-	y_pred = tF @ transpose(I)
+	y_pred = tF @ transpose(P)
 
 	# compute the test loss for good measure
 	tG = feat2.predict(y_test, batch_size=bs)

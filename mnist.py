@@ -79,7 +79,7 @@ if use_RFA:
 	model.compile(optimizer='adam', loss = RFA_Loss)
 
 	for epoch in range(num_epochs):
-		model.fit(x_train, y_train, epochs=1, batch_size=bs) 
+		model.fit(x_train, y_train, epochs=1, batch_size=bs, shuffle=True) 
 
 		# postprocessing needed to obtain the full prediction model
 		features = model.predict(x_train, batch_size=bs)
