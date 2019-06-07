@@ -3,7 +3,7 @@
 bs = 200  # batch size
 num_epochs = 20
 
-use_cnn = False
+use_cnn = True
 
 # Number of features = number of categories (for supervised learning)
 num_feat = 10
