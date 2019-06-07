@@ -25,7 +25,7 @@ inferY((K,L,A), G, Y) = (Y*G')*(L\A')*inv(K)/size(G,2)
 
 # computes the singular values of the inference maps
 function singvals((K,L,A)) 
-	isK = inv(sqrt(K))
+	isK = real.(inv(sqrt(K)))
 	M = isK*A*(L\A')*isK
 	return eigvals(Symmetric(M))
 end
@@ -143,6 +143,4 @@ function train(max_epoch; cnn=false)
 	return x -> Flux.onecold(I*data(featX(x)), 0:9), singvals(test_kernel)
 end
 
-model, λ = train(10, cnn=false)
-println("Singular values: ", λ)
-
+model, λ = train(10, cnn=true);
