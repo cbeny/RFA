@@ -1,11 +1,9 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-# Tested on TensorFlow 1.13.1 and 2.0.0-alpha0
+# Tested on TensorFlow 2.0.0-alpha0
 
 bs = 200  # batch size
-num_epochs = 100
+num_epochs = 20
 
-use_cnn = True
+use_cnn = False
 
 # Number of features = number of categories (for supervised learning)
 num_feat = 10
@@ -29,18 +27,18 @@ y_test = tf.one_hot(y_test, 10)
 in1 = Input(shape=(28,28,1))
 if use_cnn:
 	print("\nUsing a convolutional neural net")
-	aux = Conv2D(32, kernel_size=(3, 3), strides=(1,1), activation='relu')(in1)
-	aux = Conv2D(64, kernel_size=(4, 4), strides=(2,2), activation='relu')(aux)
-	aux = Conv2D(64, kernel_size=(3, 3), strides=(1,1), activation='relu')(aux)
-	aux = Conv2D(128, kernel_size=(4, 4), strides=(2,2), activation='relu')(aux)
-	aux = Flatten()(aux)
-	aux = Dense(2048, activation='relu')(aux)
+	x = Conv2D(32, kernel_size=(3, 3), strides=(1,1), activation='relu')(in1)
+	x = Conv2D(64, kernel_size=(4, 4), strides=(2,2), activation='relu')(x)
+	x = Conv2D(64, kernel_size=(3, 3), strides=(1,1), activation='relu')(x)
+	x = Conv2D(128, kernel_size=(4, 4), strides=(2,2), activation='relu')(x)
+	x = Flatten()(x)
+	x = Dense(2048, activation='relu')(x)
 else:
 	print("\nUsing a 3-layer perceptron")
-	aux = Flatten()(in1)
-	aux = Dense(1024, activation='relu')(aux)
-	aux = Dense(1024, activation='relu')(aux)
-out1 = Dense(num_feat)(aux)
+	x = Flatten()(in1)
+	x = Dense(1000, activation='relu')(x)
+	x = Dense(1000, activation='relu')(x)
+out1 = Dense(num_feat)(x)
 
 # and another network producing features for the second data type
 # In this example these are the labels, but the one-hot encoding already 
@@ -80,6 +78,12 @@ def inferY(ker, G, Y):
 	K, L, A = ker
 	return transpose(Y)/n @ G @ inv(L + D) @ transpose(A) @ inv(K + D)
 
+# produces a matrix inferring X from Y
+def inferX(ker, F, X):
+	n = get_batch_size(F)
+	K, L, A = ker
+	return transpose(X)/n @ F @ inv(K + D) @ A @ inv(L + D)
+
 def RFA_Loss(dummy, features):
 	F, G = tf.split(features, 2, axis=1)
 	return num_feat - relevance(cov(F, G)) 
@@ -88,23 +92,28 @@ def RFA_Loss(dummy, features):
 model.compile(optimizer='adam', loss=RFA_Loss)
 
 # keras really wants us to have a target, but we don't.....
-dummy = [0.0 for i in range(60000)] 
+dummy = np.zeros(60000)
 
 for epoch in range(num_epochs):
 	model.fit([x_train, y_train], dummy, epochs=1, batch_size=bs) 
+
+	print("testing...", end='\r')
 
 	# computes the features on the training images
 	F = feat1.predict(x_train, batch_size=bs)
 	G = feat2.predict(y_train, batch_size=bs)
 
-	# produces a matrix I mapping the output of the model to a prediction 
+	# produces a matrix mapping the output of the model to a prediction 
 	# (average over the posterior)
-	ker = cov(F, G)
-	I = inferY(ker, G, y_train)
+	I = inferY(cov(F, G), G, y_train)
 
 	# label predictions on test data
-	y_pred  = feat1.predict(x_test, batch_size=bs) @ transpose(I)
-	y_true  = feat2.predict(y_test, batch_size=bs)
+	tF = feat1.predict(x_test, batch_size=bs)
+	y_pred = tF @ transpose(I)
 
-	inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_true)).numpy()
-	print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
+	# compute the test loss for good measure
+	tG = feat2.predict(y_test, batch_size=bs)
+	test_loss = num_feat - relevance(cov(tF, tG))
+
+	inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_test)).numpy()
+	print("Epoch %d: test loss = %.3f  test errors = %.2f%%" % (epoch, test_loss, inacc*100))
