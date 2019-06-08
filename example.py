@@ -51,7 +51,7 @@ feat1 = Model(inputs=in1, outputs=out1)
 feat2 = Model(inputs=in2, outputs=out2)
 
 # ...but together for training as they have a joint loss function
-model = Model(inputs=[in1, in2], outputs=concatenate([out1, out2]))
+model = Model(inputs=[in1, in2], outputs=concatenate([out1, out2], axis=1))
 
 
 D = tf.constant(1e-8 * np.identity(num_feat), tf.float32)
@@ -91,7 +91,7 @@ def RFA_Loss(dummy, features):
 
 model.compile(optimizer='adam', loss=RFA_Loss)
 
-# keras really wants us to have a target, but we don't.....
+# keras really wants us to have a target, although we don't.
 dummy = np.zeros(60000)
 
 for epoch in range(num_epochs):
@@ -99,11 +99,11 @@ for epoch in range(num_epochs):
 
 	print("testing...", end='\r')
 
-	# computes the features on the training images
+	# compute the features on the training images
 	F = feat1.predict(x_train, batch_size=bs)
 	G = feat2.predict(y_train, batch_size=bs)
 
-	# produces a matrix mapping the output of the model to a prediction 
+	# produce a matrix mapping the output of the model to a prediction 
 	# (average over the posterior)
 	P = inferY(cov(F, G), G, y_train)
 
