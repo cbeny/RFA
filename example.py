@@ -97,8 +97,8 @@ dummy = np.zeros(60000)
 for epoch in range(1,num_epochs):
     model.fit([x_train, y_train], dummy, epochs=1, batch_size=bs, shuffle=True, verbose=2) 
 
-    # test the model
-    
+    print("testing...", end='\r')
+
     sess = tf.Session()  # because we're not using tf 2.0
 
     # compute the features on the training images
@@ -111,7 +111,7 @@ for epoch in range(1,num_epochs):
 
     # label predictions on test data
     tF = feat1.predict(x_test, batch_size=bs, verbose=0)
-    y_pred = sess.run(tf.math.round(tF @ transpose(P)))
+    y_pred = sess.run(tF @ transpose(P))
 
     # compute the test loss for good measure
     tG = feat2.predict(y_test, batch_size=bs, verbose=0)
@@ -119,7 +119,7 @@ for epoch in range(1,num_epochs):
 
     sess.close()
 
-    inacc = np.mean(np.max(y_pred, axis=-1) != np.max(y_test, axis=-1))
+    inacc = np.mean(np.argmax(y_pred, axis=-1) != np.argmax(y_test, axis=-1))
     print("Epoch %d: test loss = %.3f  test errors = %.2f%%" % (epoch, test_loss, inacc*100))
     
 print("Done.")
