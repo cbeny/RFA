@@ -1,18 +1,26 @@
+# get rid of all the warnings
+import os, warnings
+warnings.simplefilter("ignore", category=FutureWarning)
+os.environ["TF_CPP_MIN_LOG_LEVEL"]="2"
+import tensorflow as tf
+tf.logging.set_verbosity(tf.logging.ERROR)
 
-bs = 100  # batch size
-num_epochs = 20
+
+import numpy as np
+from tensorflow.linalg import transpose, inv, trace
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Conv2D, Dense, Flatten, Input, concatenate, Lambda
+from tensorflow.keras.optimizers import Adam
+
+
+bs = 100  # batch size, should divide 60000 
+num_epochs = 5
 
 use_cnn = True
 
 # Number of features = number of categories (for supervised learning)
 num_feat = 10
 
-import numpy as np
-import tensorflow as tf
-from tensorflow.linalg import transpose, inv, trace
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Conv2D, Dense, Flatten, Input, concatenate, Lambda
-from tensorflow.keras.optimizers import Adam
 
 # prepare the data
 mnist = tf.keras.datasets.mnist
@@ -95,7 +103,7 @@ model.compile(optimizer=Adam(lr=0.001, decay=0.001), loss=RFA_Loss)
 # keras really wants us to have a target, although we don't.
 dummy = np.zeros(60000)
 
-for epoch in range(1,num_epochs):
+for epoch in range(1,num_epochs+1):
     model.fit([x_train, y_train], dummy, epochs=1, batch_size=bs, shuffle=True, verbose=2) 
 
     sess = tf.Session()  # because we're not using tf 2.0
