@@ -1,5 +1,5 @@
 
-bs = 200  # batch size
+bs = 100  # batch size
 num_epochs = 20
 
 use_cnn = True
@@ -12,6 +12,7 @@ import tensorflow as tf
 from tensorflow.linalg import transpose, inv, trace
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Input, concatenate, Lambda
+from tensorflow.keras.optimizers import Adam
 
 # prepare the data
 mnist = tf.keras.datasets.mnist
@@ -89,15 +90,13 @@ def RFA_Loss(dummy, features):
     return num_feat - relevance(cov(F, G)) 
 
 
-model.compile(optimizer='adam', loss=RFA_Loss)
+model.compile(optimizer=Adam(lr=0.001, decay=0.001), loss=RFA_Loss)
 
 # keras really wants us to have a target, although we don't.
 dummy = np.zeros(60000)
 
 for epoch in range(1,num_epochs):
     model.fit([x_train, y_train], dummy, epochs=1, batch_size=bs, shuffle=True, verbose=2) 
-
-    print("testing...", end='\r')
 
     sess = tf.Session()  # because we're not using tf 2.0
 
