@@ -9,3 +9,5 @@ This is an example of implementation of the approach presented in https://arxiv.
 `mnist.py` does the same, but is slightly streamlined for supervised classification. In this setting, RFA boils down to a new loss function, coupled with an extra post-processing operation.
 
 `cifar.jl` can be used to reproduce the bottow row of Fig. 1.
+
+`halves.py` applies RFA to reconstruct the occluded part of an image
