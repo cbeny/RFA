@@ -10,4 +10,4 @@ This is an example of implementation of the approach presented in https://arxiv.
 
 `cifar.jl` can be used to reproduce the bottow row of Fig. 1.
 
-`halves.py` applies RFA to reconstruct the occluded part of an image
+`occlusion.ipynb` applies RFA to reconstruct the occluded part of an image (ipython notebook using tensorflow)
