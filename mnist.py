@@ -1,6 +1,4 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-# Tested on TensorFlow 1.13.1 and 2.0.0-alpha0
+#from __future__ import absolute_import, division, print_function, unicode_literals
 
 bs = 200  # batch size
 num_epochs = 100
@@ -23,9 +21,9 @@ mnist = tf.keras.datasets.mnist
 (x_train, y_train), (x_test, y_test) = mnist.load_data()
 x_train = x_train.reshape(60000,28,28,1)/255.0
 x_test = x_test.reshape(10000,28,28,1)/255.0
-y_train = tf.one_hot(y_train, 10)
-y_test = tf.one_hot(y_test, 10)
-
+def one_hot(data, nclass): return np.eye(nclass, dtype=np.float32)[data]
+y_train = one_hot(y_train, 10)
+y_test = one_hot(y_test, 10)
 
 # We need a neural net as usual, with 1 linear output neuron per class
 if use_cnn:
@@ -100,7 +98,6 @@ else:
 		model.fit(x_train, y_train, epochs=1, batch_size=bs)
 
 		y_pred = model.predict(x_test, batch_size=bs) 
-
-		inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_test)).numpy()
+  		inacc = np.mean(np.argmax(y_pred, axis=-1) != np.argmax(y_test, axis=-1))
 		print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
 
