@@ -1,7 +1,7 @@
-#from __future__ import absolute_import, division, print_function, unicode_literals
+# tested on tensorflow 2.2
 
 bs = 200  # batch size
-num_epochs = 100
+num_epochs = 10
 
 # for comparisons
 use_RFA = True
@@ -12,7 +12,6 @@ num_feat = 10
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.linalg import transpose, inv, trace
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, Dropout
 
@@ -56,16 +55,16 @@ def get_batch_size(X):
 
 def RFA_Pred(F, Y):
 	n = get_batch_size(F) 
-	K = transpose(F)/n @ F
-	A = transpose(F)/n @ Y
-	return transpose(A) @ inv(K + D)
+	K = tf.matmul(F/n, F, transpose_a=True)
+	A = tf.matmul(F/n, Y, transpose_a=True)
+	return tf.matmul(A, tf.linalg.inv(K + D), transpose_a=True)
 
 def RFA_Loss(F, Y):
 	n = get_batch_size(F) 
-	K = transpose(F)/n @ F
-	A = transpose(F)/n @ Y
-	L = transpose(Y)/n @ Y
-	return num_feat - trace(A @ inv(L) @ transpose(A) @ inv(K + D))
+	K = tf.matmul(F/n, F, transpose_a=True)
+	A = tf.matmul(F/n, Y, transpose_a=True)
+	L = tf.matmul(Y/n, Y, transpose_a=True)
+	return num_feat - tf.linalg.trace(A @ tf.linalg.inv(L) @ tf.linalg.matrix_transpose(A) @ tf.linalg.inv(K + D))
 
 # cross-entropy loss for comparison
 def CE_Loss(x,y):
@@ -84,7 +83,7 @@ if use_RFA:
 		P = RFA_Pred(features, y_train)
 
 		# predict the labels of the test data
-		y_pred = model.predict(x_test, batch_size=bs) @ transpose(P)
+		y_pred = model.predict(x_test, batch_size=bs) @ np.transpose(P)
 
 		inacc = 1-tf.reduce_mean(tf.keras.metrics.categorical_accuracy(y_pred, y_test)).numpy()
 		print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
@@ -98,6 +97,6 @@ else:
 		model.fit(x_train, y_train, epochs=1, batch_size=bs)
 
 		y_pred = model.predict(x_test, batch_size=bs) 
-  		inacc = np.mean(np.argmax(y_pred, axis=-1) != np.argmax(y_test, axis=-1))
+		inacc = np.mean(np.argmax(y_pred, axis=-1) != np.argmax(y_test, axis=-1))
 		print("Epoch %d: test errors: %.2f%%" % (epoch, inacc*100))
 
